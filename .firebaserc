@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "stripe-payment-server-10493"
+  },
+  "targets": {},
+  "etags": {}
+}
