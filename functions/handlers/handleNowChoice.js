@@ -1,9 +1,26 @@
-/* eslint-disable */
-const { getNextPrompt } = require("../utils/getNextPrompt");
-const { saveSession } = require("../utils/session");
-
 module.exports = async function handleNowChoice({ event, client, userId }) {
-  const { text: promptText } = await getNextPrompt(userId);
+  console.log("[DEBUG] handleNowChoice triggered for:", userId);
+
+  let promptText;
+  try {
+    const result = await getNextPrompt(userId);
+    promptText = result?.text;
+
+    if (!promptText) {
+      console.error("❌ getNextPrompt returned empty or undefined");
+      return await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: "お題の取得に失敗しました。もう一度お試しください。"
+      });
+    }
+
+  } catch (err) {
+    console.error("🔥 Error in getNextPrompt:", err);
+    return await client.replyMessage(event.replyToken, {
+      type: "text",
+      text: "お題の取得中にエラーが発生しました。しばらくしてから再試行してください。"
+    });
+  }
 
   await saveSession(userId, {
     currentStep: "awaitingJapanese",
