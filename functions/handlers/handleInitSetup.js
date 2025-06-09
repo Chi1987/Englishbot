@@ -1,18 +1,13 @@
-/* eslint-disable */
 const admin = require("../utils/firebaseAdmin");
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+if (!admin.apps.length) admin.initializeApp();
 const db = admin.firestore();
 
 async function handleInitSetup({ event, client, session }) {
   const userId = event.source.userId;
   const userText = event.message.text.trim();
 
-  // すでに初期設定完了済みなら何もしない
-  if (session.postSetup) {
-    return;
-  }
+  // すでに初期設定が終わっていればスキップ
+  if (session.postSetup) return;
 
   const step = session.step || "awaiting_name";
 
@@ -22,9 +17,8 @@ async function handleInitSetup({ event, client, session }) {
       return await client.replyMessage(event.replyToken, {
         type: "text",
         text: [
-          "TalkMasterにご登録いただきありがとうございます！",
-          "このBotでは、毎日日本語→英語のアウトプット練習ができます。",
-          "まず、あなたのお名前をローマ字で教えてください（例：Sakura Tanaka）"
+          "TalkMasterにご登録ありがとうございます！",
+          "ローマ字でフルネームを入力してください（例：Sakura Tanaka）"
         ].join("\n")
       });
     }
@@ -45,15 +39,30 @@ async function handleInitSetup({ event, client, session }) {
     if (!isValidDate) {
       return await client.replyMessage(event.replyToken, {
         type: "text",
-        text: "誕生日を8桁の数字で教えてください（例：19980123）"
+        text: "誕生日は8桁の数字で入力してください（例：19980123）"
       });
     }
 
-    await db.collection("sessions").doc(userId).set({
+    const sessionRef = db.collection("sessions").doc(userId);
+    const sessionSnap = await sessionRef.get();
+    const name = sessionSnap.exists ? sessionSnap.data().name : "unknown";
+
+    // 🔴 usersコレクションにも保存
+    await db.collection("users").doc(userId).set({
+      name,
+      birthday: userText,
+      joinedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    // 🔵 セッションのpostSetupも更新
+    await sessionRef.set({
       birthday: userText,
       postSetup: true,
       step: null,
-      joinedAt: admin.firestore.FieldValue.serverTimestamp() // ✅ 登録日時の保存
+      currentStep: "awaitingJapanese", // 念のため
+      japaneseInput: [],
+      translatedWords: [],
+      translationSegments: []
     }, { merge: true });
 
     return await client.replyMessage(event.replyToken, {

@@ -1,12 +1,5 @@
-/* eslint-disable */
-// handlers/segmentJapanese.js
 const { chatCompletion } = require("../utils/openaiClient");
 
-/**
- * 文ごとに日本語文を英訳用の文節に分割する
- * @param {string[]} sentences - 日本語3文
- * @returns {Promise<string[]>} - 文節の配列（例：「私は」「テレビを」「見ました」）
- */
 module.exports = async function segmentJapanese(sentences) {
   const prompt = [
     "以下の日本語文を、それぞれ英語に翻訳しやすい形で文節に分けてください。",
@@ -16,7 +9,7 @@ module.exports = async function segmentJapanese(sentences) {
     `文2: ${sentences[1]}`,
     `文3: ${sentences[2]}`,
     "",
-    "出力形式: [\"私は\", \"テレビを\", \"見ました\"] のように"
+    "出力形式: [\"私は\", \"テレビを\", \"見ました\"] のように、前後に何もつけずに配列だけを返してください。"
   ].join("\n");
 
   const result = await chatCompletion([
@@ -24,12 +17,22 @@ module.exports = async function segmentJapanese(sentences) {
     { role: "user", content: prompt }
   ]);
 
+  const raw = result?.content?.trim();
+
+  console.log("📦 segmentJapanese result.content:", raw);
+
   try {
-    const parsed = JSON.parse(result.content);
-    if (Array.isArray(parsed)) return parsed;
+    // JSONが余分なテキスト付きで返ることがあるため正規化
+    const jsonStart = raw.indexOf("[");
+    const jsonEnd = raw.lastIndexOf("]");
+    if (jsonStart >= 0 && jsonEnd >= 0) {
+      const jsonLike = raw.substring(jsonStart, jsonEnd + 1);
+      const parsed = JSON.parse(jsonLike);
+      if (Array.isArray(parsed)) return parsed;
+    }
   } catch (e) {
-    console.error("文節分割のJSON解析に失敗:", e);
+    console.error("❌ 文節分割のJSON解析に失敗:", e);
   }
 
-  throw new Error("文節の抽出に失敗しました。");
+  throw new Error("文節の抽出に失敗しました。形式を確認してください。");
 };

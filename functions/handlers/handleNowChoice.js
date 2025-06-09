@@ -1,3 +1,4 @@
+
 module.exports = async function handleNowChoice({ event, client, userId }) {
   console.log("[DEBUG] handleNowChoice triggered for:", userId);
 
@@ -22,12 +23,49 @@ module.exports = async function handleNowChoice({ event, client, userId }) {
     });
   }
 
+const { getNextPrompt } = require("../utils/getNextPrompt");
+const { saveSession } = require("../utils/session");
+
+module.exports = async function handleNowChoice({ event, client, session }) {
+  const userId = event.source.userId;
+  console.log("[DEBUG] handleNowChoice triggered for:", userId);
+
+  let promptText;
+  let nextIndex;
+
+  try {
+    const result = await getNextPrompt(userId);
+    promptText = result?.text;
+    nextIndex = result?.nextIndex;
+
+    if (!promptText) {
+      console.error("❌ getNextPrompt returned empty or undefined");
+      return await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: "お題の取得に失敗しました。もう一度お試しください。"
+      });
+    }
+  } catch (err) {
+    console.error("🔥 Error in getNextPrompt:", err);
+    return await client.replyMessage(event.replyToken, {
+      type: "text",
+      text: "お題の取得中にエラーが発生しました。しばらくしてから再試行してください。"
+    });
+  }
+
+  // 🔄 セッションを初期化して保存（誤上書き防止のためpostSetupを強制true）
   await saveSession(userId, {
     currentStep: "awaitingJapanese",
     currentPrompt: promptText,
+    nextPromptIndex: nextIndex,
+    postSetup: true,
+    japaneseInput: [],
+    translatedWords: [],
+    translationSegments: [],
+    currentSegmentIndex: 0
   });
 
-  await client.replyMessage(event.replyToken, {
+  return await client.replyMessage(event.replyToken, {
     type: "text",
     text: [
       "では、1題目を始めましょう！",

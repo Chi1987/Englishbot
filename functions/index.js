@@ -77,17 +77,24 @@ app.post("/webhook", middleware(config), async (req, res) => {
 
 // ✅ Cloud Functions エクスポート
 exports.webhook = functions.https.onRequest({
-    region: 'asia-northeast1',
-    cors: true,
-    timeoutSeconds: 60,
-    memory: '256MiB',
-    invoker: 'public'
+  region: 'asia-northeast1',
+  cors: true,
+  timeoutSeconds: 60,
+  memory: '256MiB',
+  invoker: 'public'
 }, app);
 
-// ✅ （任意）スケジュール関数
-// exports.generateMonthlyReport = functions.pubsub
-//     .schedule("0 3 * * *")
-//     .timeZone("Asia/Tokyo")
-//     .onRun(async () => {
-//         await generateMonthlyReport();
-//     });
+// ✅ 念のため "/" にもエクスポート（テスト用途）
+app.post("/", middleware(config), async (req, res) => {
+    const events = req.body.events;
+    if (!events || events.length === 0) {
+        return res.status(200).send("No events");
+    }
+
+    for (const event of events) {
+        if (event.type === "message") {
+            await routeMessage({ event, client });
+        }
+    }
+    res.status(200).send("OK");
+});
