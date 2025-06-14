@@ -1,9 +1,7 @@
-/* eslint-disable */
 // 環境変数の読み込み
 require('dotenv').config();
 
 // Firebase Functions v2のインポート
-const {onRequest, onCall} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const functions = require("firebase-functions");
 
@@ -11,17 +9,7 @@ const functions = require("firebase-functions");
 const routeMessage = require("./handlers/routeMessage");
 const { generateMonthlyReport } = require("./tasks/generateMonthlyReport");
 const express = require("express");
-const { middleware, Client } = require("@line/bot-sdk");
-const dotenv = require("dotenv");
-dotenv.config();
-
-const line = require("@line/bot-sdk");
-const admin = require("firebase-admin");
-
-// ✅ Firebase初期化（重複防止）
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+const { middleware, MessagingApiClient } = require("@line/bot-sdk");
 
 // LINE Bot 設定
 let config;
@@ -49,7 +37,7 @@ if (!config.channelAccessToken || !config.channelSecret) {
 
 let client;
 try {
-    client = new line.Client(config);
+    client = new MessagingApiClient(config);
     console.log('LINE Bot initialized:', {
         hasAccessToken: !!config.channelAccessToken,
         hasSecret: !!config.channelSecret
@@ -83,18 +71,3 @@ exports.webhook = functions.https.onRequest({
   memory: '256MiB',
   invoker: 'public'
 }, app);
-
-// ✅ 念のため "/" にもエクスポート（テスト用途）
-app.post("/", middleware(config), async (req, res) => {
-    const events = req.body.events;
-    if (!events || events.length === 0) {
-        return res.status(200).send("No events");
-    }
-
-    for (const event of events) {
-        if (event.type === "message") {
-            await routeMessage({ event, client });
-        }
-    }
-    res.status(200).send("OK");
-});

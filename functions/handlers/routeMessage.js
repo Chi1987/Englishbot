@@ -1,4 +1,3 @@
-/* eslint-disable */
 const admin = require("../utils/firebaseAdmin");
 const { getSession } = require("../utils/session");
 const getUserPlan = require("../utils/getUserPlan");

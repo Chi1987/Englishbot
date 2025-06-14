@@ -12,7 +12,7 @@ async function handleInitSetup({ event, client, session }) {
   const step = session.step || "awaiting_name";
 
   if (step === "awaiting_name") {
-    const isValidName = /^[a-zA-Z]+(?:\s[a-zA-Z]+)*$/.test(userText);
+    const isValidName = /^[a-zA-Z]+(\s[a-zA-Z]+)*$/.test(userText);
     if (!isValidName) {
       return await client.replyMessage(event.replyToken, {
         type: "text",

@@ -4,9 +4,9 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modlues/**"
+      "**/node_modulues/**"
     ]
-  },
+  },  
   "functions": [
     {
       "source": "functions",
