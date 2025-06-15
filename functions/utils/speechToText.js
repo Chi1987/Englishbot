@@ -30,4 +30,4 @@ async function speechToText(audioBuffer) {
   return response.text.trim();
 }
 
-module.exports = speechToText;
+module.exports = {speechToText};

@@ -54,7 +54,7 @@ module.exports = async function routeMessage({ event, client }) {
     }
 
     // ✅ テキスト以外は拒否（フル以外）
-    if (messageType !== "text") {
+    if (plan !== "full" && messageType !== "text") {
       return await client.replyMessage(event.replyToken, {
         type: "text",
         text: "テキストまたは音声（フルプランのみ）で入力してください。"
