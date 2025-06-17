@@ -1,4 +1,4 @@
-/* eslint-disable */
+ 
 const { saveSession } = require("../utils/session");
 const checkEnglishGrammar = require("../utils/checkEnglishGrammar");
 const admin = require("../utils/firebaseAdmin");
@@ -30,8 +30,7 @@ module.exports = async function handleEnglishInput({ event, client, session }) {
   if (isCorrect) {
     await saveSession(userId, {
       ...session,
-      currentStep: "done",
-      finalEnglish: userSentence
+      currentStep: null
     });
 
     await client.replyMessage(event.replyToken, {

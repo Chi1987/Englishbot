@@ -1,5 +1,6 @@
 const { saveSession } = require("../utils/session");
 const checkJapaneseGrammar = require("../utils/checkJapaneseGrammar");
+const segmentJapanese = require("./segmentJapanese");
 
 module.exports = async function handleJapaneseInput({ event, client, session }) {
   const userId = event.source.userId;

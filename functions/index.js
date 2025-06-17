@@ -9,7 +9,8 @@ const functions = require("firebase-functions");
 const routeMessage = require("./handlers/routeMessage");
 const { generateMonthlyReport } = require("./tasks/generateMonthlyReport");
 const express = require("express");
-const { middleware, messagingApi } = require("@line/bot-sdk");
+const { middleware} = require("@line/bot-sdk");
+const line = require("@line/bot-sdk");
 
 // LINE Bot 設定
 let config;
@@ -37,7 +38,7 @@ if (!config.channelAccessToken || !config.channelSecret) {
 
 let client;
 try {
-    client = new messagingApi.MessagingApiClient(config);
+    client = new line.Client(config);
     console.log('LINE Bot initialized:', {
         hasAccessToken: !!config.channelAccessToken,
         hasSecret: !!config.channelSecret
