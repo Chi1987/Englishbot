@@ -9,7 +9,7 @@ const functions = require("firebase-functions");
 const routeMessage = require("./handlers/routeMessage");
 const { generateMonthlyReport } = require("./tasks/generateMonthlyReport");
 const express = require("express");
-const { middleware, MessagingApiClient } = require("@line/bot-sdk");
+const { middleware, messagingApi } = require("@line/bot-sdk");
 
 // LINE Bot 設定
 let config;
@@ -37,7 +37,7 @@ if (!config.channelAccessToken || !config.channelSecret) {
 
 let client;
 try {
-    client = new MessagingApiClient(config);
+    client = new messagingApi.MessagingApiClient(config);
     console.log('LINE Bot initialized:', {
         hasAccessToken: !!config.channelAccessToken,
         hasSecret: !!config.channelSecret
@@ -49,18 +49,43 @@ try {
 const app = express();
 
 // ✅ LINE Webhookエントリーポイント修正済み！
-app.post("/webhook", middleware(config), async (req, res) => {
+app.post("/", middleware(config), async (req, res) => {
     const events = req.body.events;
     if (!events || events.length === 0) {
         return res.status(200).send("No events");
     }
-
-    for (const event of events) {
-        if (event.type === "message") {
-            await routeMessage({ event, client });
+    let replyToken = events[0].replyToken;
+    console.log("replyToken:", replyToken);
+    try{
+        for (const event of events) {
+            console.log("event:", event);
+            replyToken = event.replyToken;
+            if(event.deliveryContext.isRedelivery){
+                // LINEからの再送の場合は処理しない
+                console.log("Lineからの再送:" , event.message.text);
+                continue;
+            }
+            if (event.type === "message") {
+                await routeMessage({ event, client });
+            }
         }
+        console.log("イベント処理完了");
+        res.status(200).send("OK");
+    }catch(error){
+        console.error("エラーが発生しました:", error);
+        if(error.originalError?.response){
+            console.error("レスポンス:" , error.originalError.response);
+        }
+        if(error.originalError?.response.data){
+            console.error("レスポンス詳細:" , error.originalError.response.data);
+        }
+        await client.replyMessage(replyToken, {
+            type: "text",
+            text: "ごめんね、ちょっと調子が悪いみたい💦もう一度話しかけてね！",
+        });
+        res.status(200).send("OK but error");
     }
-    res.status(200).send("OK");
+    
 });
 
 // ✅ Cloud Functions エクスポート

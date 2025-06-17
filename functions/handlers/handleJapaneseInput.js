@@ -31,11 +31,14 @@ module.exports = async function handleJapaneseInput({ event, client, session }) 
     ...grammarFeedbackLines
   ].join("\n");
 
+  // 文節分割
+  const segments = await segmentJapanese(inputs);
+
   // セッションを更新（次ステップへ）
   updatedSession.currentStep = "awaitingTranslationWords";
   updatedSession.currentSegmentIndex = 0;
   updatedSession.translatedWords = [];
-  updatedSession.translationSegments = [];
+  updatedSession.translationSegments = segments;
 
   await saveSession(userId, updatedSession);
 
@@ -48,6 +51,14 @@ module.exports = async function handleJapaneseInput({ event, client, session }) 
       text: grammarFeedbackText.slice(i, i + MAX_LENGTH)
     });
   }
+  messages.push({
+    type: "text",
+    text: "次に英訳をしていきます。1単語ずつ日本語を英単語に直しましょう。"
+  });
+  messages.push({
+    type: "text",
+    text: `「${segments[0]}」を英語にすると？`
+  });
 
   return await client.replyMessage(event.replyToken, messages);
 };
