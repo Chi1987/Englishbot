@@ -1,9 +1,8 @@
-/* eslint-disable */
 const { saveSession } = require("../utils/session");
 
-module.exports = async function handleDateChoice({ event, client, userId, session }) {
+module.exports = async function handleDateChoice({ event, client, session }) {
   const text = event.message.text;
-
+  const userId = event.source.userId;
   if (text === "予定がまだわからない") {
     await saveSession(userId, {
       ...session,

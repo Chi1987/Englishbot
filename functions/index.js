@@ -2,7 +2,6 @@
 require('dotenv').config();
 
 // Firebase Functions v2のインポート
-const logger = require("firebase-functions/logger");
 const functions = require("firebase-functions");
 
 // ユーザ定義

@@ -1,4 +1,3 @@
-/* eslint-disable */
 // handlers/handleVoiceInput.js
 const { saveSession } = require("../utils/session");
 const { speechToText } = require("../utils/speechToText");

@@ -1,7 +1,7 @@
-/* eslint-disable */
 const { saveSession } = require("../utils/session");
 
-module.exports = async function handleLaterChoice({ event, client, userId, session }) {
+module.exports = async function handleLaterChoice({ event, client, session }) {
+  const userId = event.source.userId;
   await saveSession(userId, {
     ...session,
     currentStep: "chooseDay"

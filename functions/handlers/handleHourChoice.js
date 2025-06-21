@@ -1,10 +1,9 @@
-/* eslint-disable */
 const { saveSession } = require("../utils/session");
 
-module.exports = async function handleHourChoice({ event, client, userId, session }) {
+module.exports = async function handleHourChoice({ event, client, session }) {
   const text = event.message.text.trim();
   const match = text.match(/^(\d{1,2})時$/);
-
+  const userId = event.source.userId;
   if (!match) {
     await client.replyMessage(event.replyToken, {
       type: "text",

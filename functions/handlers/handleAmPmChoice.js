@@ -1,9 +1,8 @@
-/* eslint-disable */
 const { saveSession } = require("../utils/session");
 
-module.exports = async function handleAmPmChoice({ event, client, userId, session }) {
+module.exports = async function handleAmPmChoice({ event, client, session }) {
   const text = event.message.text;
-
+  const userId = event.source.userId;
   if (text !== "午前" && text !== "午後") {
     await client.replyMessage(event.replyToken, {
       type: "text",

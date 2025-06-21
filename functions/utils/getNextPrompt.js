@@ -8,12 +8,12 @@ const db = admin.firestore();
  * @param {number} [indexFromSession] - セッションで管理された次のお題インデックス
  */
 async function getNextPrompt(userId, indexFromSession = null) {
-  const userRef = db.collection("users").doc(userId);
+  const userRef = db.collection("sessions").doc(userId);
   const userSnap = await userRef.get();
   const userData = userSnap.exists ? userSnap.data() : {};
 
   // セッション側の値を優先、それがなければユーザーデータ、それもなければ1
-  const currentIndex = indexFromSession || userData.currentPrompt || 1;
+  const currentIndex = userData.nextPromptIndex ?? 1;
   const docId = String(currentIndex).padStart(3, "0");
 
   console.log("📘 getNextPrompt: loading prompt ID:", docId);

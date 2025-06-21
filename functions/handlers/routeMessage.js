@@ -48,17 +48,16 @@ module.exports = async function routeMessage({ event, client }) {
       return await handleInitSetup({ event, client, session });
     }
 
-    // ✅ フルプランなら音声対応
-    if (plan === "full" && messageType === "audio") {
-      return await handleVoiceInput({ event, client, session });
-    }
-
-    // ✅ テキスト以外は拒否（フル以外）
-    if (plan !== "full" && messageType !== "text") {
-      return await client.replyMessage(event.replyToken, {
-        type: "text",
-        text: "テキストまたは音声（フルプランのみ）で入力してください。"
-      });
+    // ✅ フルプランなら音声対応それ以外は拒否
+    if (messageType === "audio") {
+      if (plan === "full") {
+        return await handleVoiceInput({ event, client, session });
+      } else if (plan !== "full") {
+        return await client.replyMessage(event.replyToken, {
+          type: "text",
+          text: "テキストまたは音声（フルプランのみ）で入力してください。"
+        });
+      }
     }
 
     // ✅ 「あとでやる」はここで処理

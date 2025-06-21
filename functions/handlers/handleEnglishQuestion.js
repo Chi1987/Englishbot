@@ -1,4 +1,3 @@
-/* eslint-disable */
 const { OpenAI } = require("openai");
 const admin = require("firebase-admin");
 require("dotenv").config();

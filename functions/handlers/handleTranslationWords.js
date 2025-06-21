@@ -1,4 +1,3 @@
-/* eslint-disable */
 // handlers/handleTranslationWords.js
 const { saveSession } = require("../utils/session");
 const { getEnglishWordFor } = require("../utils/wordLookup"); // 英単語を返す関数

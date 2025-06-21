@@ -33,10 +33,29 @@ module.exports = async function handleEnglishInput({ event, client, session }) {
       currentStep: null
     });
 
-    await client.replyMessage(event.replyToken, {
+    const messages = [];
+    messages.push({
       type: "text",
       text: "よくできました！この英文は正しく書けています。"
     });
+    messages.push({
+      type: "text",
+      text: "次のお題はいつやりますか？",
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "今やる", text: "今やる" }
+          },
+          {
+            type: "action",
+            action: { type: "message", label: "あとでやる", text: "あとでやる" }
+          }
+        ]
+      }
+    });
+
+    await client.replyMessage(event.replyToken, messages);
   } else {
     await saveSession(userId, {
       ...session,

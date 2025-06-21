@@ -43,7 +43,7 @@ module.exports = async function handleNowChoice({ event, client, session }) {
   return await client.replyMessage(event.replyToken, {
     type: "text",
     text: [
-      "では、1題目を始めましょう！",
+      `では、${nextIndex - 1}題目を始めましょう！`,
       `お題：${promptText}`,
       "",
       "このお題について、日本語で3文書いてください。",
