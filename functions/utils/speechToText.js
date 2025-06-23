@@ -6,28 +6,42 @@ const openai = new OpenAI({
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
-const FormData = require("form-data");
+const { Buffer } = require("buffer");
 
 /**
- * LINEの音声データを文字起こし（Whisper API）
- * @param {Buffer} audioBuffer
+ * LINEから音声データを取得してWhisper APIで文字起こし
+ * @param {string} messageId - LINE音声メッセージID
+ * @param {string} accessToken - LINEアクセストークン
  * @returns {Promise<string>}
  */
-async function speechToText(audioBuffer) {
-  const tempFilePath = path.join(__dirname, "temp.m4a");
-  fs.writeFileSync(tempFilePath, audioBuffer);
+async function speechToText(messageId, accessToken) {
+  try {
+    // LINEから音声データを取得
+    const audioResponse = await axios.get(`https://api-data.line.me/v2/bot/message/${messageId}/content`, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`
+      },
+      responseType: 'arraybuffer'
+    });
 
-  const form = new FormData();
-  form.append("file", fs.createReadStream(tempFilePath));
-  form.append("model", "whisper-1");
+    const audioBuffer = Buffer.from(audioResponse.data);
+    const tempFilePath = path.join(__dirname, `temp_${messageId}.m4a`);
+    fs.writeFileSync(tempFilePath, audioBuffer);
 
-  const response = await openai.audio.transcriptions.create({
-    file: fs.createReadStream(tempFilePath),
-    model: "whisper-1"
-  });
+    // OpenAI Whisper APIで文字起こし（英語のまま出力）
+    const response = await openai.audio.transcriptions.create({
+      file: fs.createReadStream(tempFilePath),
+      model: "whisper-1",
+      language: "en"
+    });
 
-  fs.unlinkSync(tempFilePath);
-  return response.text.trim();
+    // 一時ファイルを削除
+    fs.unlinkSync(tempFilePath);
+    return response.text.trim();
+  } catch (error) {
+    console.error("音声処理エラー:", error);
+    throw error;
+  }
 }
 
 module.exports = {speechToText};

@@ -1,12 +1,18 @@
-const { db } = require("../firebase");
-const { client } = require("../lineClient"); // 既存のMessagingAPI client使える前提
+const admin = require("../utils/firebaseAdmin");
+const { getNextPrompt } = require("../utils/getNextPrompt");
+const db = admin.firestore();
 
-async function checkResumableSessions() {
+async function checkResumableSessions(client) {
   const now = new Date();
+  const jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  jst.setSeconds(0);
+  jst.setMilliseconds(0);
+  const isoTime = jst.toISOString(); // resumeAt に等しく使える形式
+
 
   const snapshot = await db.collection("sessions")
     .where("paused", "==", true)
-    .where("resumeAt", "<=", now.toISOString())
+    .where("resumeAt", "==", isoTime)
     .get();
 
   if (snapshot.empty) {
@@ -14,29 +20,44 @@ async function checkResumableSessions() {
     return;
   }
 
-  const promises = [];
-
-  snapshot.forEach(doc => {
-    const session = doc.data();
+  const promises = snapshot.docs.map(async doc => {
     const userId = doc.id;
+    const result = await getNextPrompt(userId);
 
     // LINE通知を送信
     const msg = {
       type: "text",
-      text: `そろそろ再開しませんか？\n「${session.currentPrompt}」のお題が残っています。`
+      text: `そろそろ再開しませんか？\n「${result?.text}」のお題が残っています。`,
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "今やる", text: "今やる" }
+          },
+          {
+            type: "action",
+            action: { type: "message", label: "あとでやる", text: "あとでやる" }
+          }
+        ]
+      }
     };
 
-    promises.push(client.pushMessage(userId, msg));
+    await client.pushMessage(userId, msg);
 
     // セッション状態を更新（paused解除、ステップ復元）
-    promises.push(doc.ref.update({
+    await doc.ref.update({
       paused: false,
       currentStep: "awaitingJapanese"
-    }));
+    });
   });
 
-  await Promise.all(promises);
-  console.log(`✅ Resumed ${snapshot.size} sessions`);
+  try {
+    await Promise.all(promises);
+    console.log(`✅ Resumed ${snapshot.size} sessions`);
+  } catch (error) {
+    console.error('❌ Error processing sessions:', error);
+    throw error;
+  }
 }
 
 module.exports = { checkResumableSessions };

@@ -2,9 +2,14 @@
 const { saveSession } = require("../utils/session");
 const checkEnglishGrammar = require("../utils/checkEnglishGrammar");
 
-module.exports = async function handleCorrection({ event, client, session }) {
+module.exports = async function handleCorrection({ event, client, session }, audioScript = null) {
   const userId = event.source.userId;
-  const userSentence = event.message.text.trim();
+  let userSentence = null;
+  if(audioScript){
+    userSentence = audioScript;
+  }else{
+    userSentence = event.message.text.trim();
+  }
 
   const { isCorrect, feedback } = await checkEnglishGrammar(userSentence);
 

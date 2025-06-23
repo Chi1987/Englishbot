@@ -12,14 +12,11 @@ module.exports = async function handleTranslationWords({ event, client, session 
   const currentSegment = segments[index];
 
   let englishWord;
-
+  let unknownFlag = false;
   if (userInput === "わからない") {
     // 英単語を取得してそのまま提示（ヒントではなく答え）
     englishWord = await getEnglishWordFor(currentSegment);
-    await client.replyMessage(event.replyToken, {
-      type: "text",
-      text: `「${currentSegment}」は英語で「${englishWord}」です。`
-    });
+    unknownFlag = true;
   } else {
     englishWord = userInput;
   }
@@ -35,24 +32,44 @@ module.exports = async function handleTranslationWords({ event, client, session 
       translatedWords: translated,
       currentStep: "awaitingEnglish"
     });
-
-    await client.replyMessage(event.replyToken, {
-      type: "text",
-      text: [
-        "単語の入力が完了しました！",
-        "これらを並べて英文を作ってください。1文にまとめて送ってください。"
-      ].join("\n")
-    });
+    if(unknownFlag){
+      await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: [
+          `「${currentSegment}」は英語で「${englishWord}」です。`,
+          "単語の入力が完了しました！",
+          "これらを並べて英文を作ってください。1文にまとめて送ってください。"
+        ].join("\n")
+      });
+    }else{
+      await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: [
+          "単語の入力が完了しました！",
+          "これらを並べて英文を作ってください。1文にまとめて送ってください。"
+        ].join("\n")
+      });
+    }
   } else {
     await saveSession(userId, {
       ...session,
       translatedWords: translated,
       currentSegmentIndex: nextIndex
     });
-
-    await client.replyMessage(event.replyToken, {
-      type: "text",
-      text: `「${segments[nextIndex]}」を英語にすると？`
-    });
+    if(unknownFlag){
+      await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: [
+          `「${currentSegment}」は英語で「${englishWord}」です。`,
+          `「${segments[index + 1]}」を英語にすると？`
+        ].join("\n")
+  
+      });
+    }else{
+      await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: `「${segments[nextIndex]}」を英語にすると？`
+      });
+    }
   }
 };

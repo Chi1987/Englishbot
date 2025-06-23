@@ -7,6 +7,7 @@ const { chatCompletion } = require("../utils/openaiClient");
  * @returns {Promise<{ isCorrect: boolean, feedback: string }>}
  */
 module.exports = async function checkEnglishGrammar(english) {
+  console.log("english:", english);
   const prompt = [
     "以下の英文をネイティブ視点で見て、文法的・自然さに問題があれば簡潔に指摘してください。",
     "問題がない場合は「問題なし」とだけ返答してください。",
@@ -20,6 +21,8 @@ module.exports = async function checkEnglishGrammar(english) {
   ]);
 
   const content = res.content.trim();
+
+  console.log("content:", content);
 
   if (content === "問題なし") {
     return { isCorrect: true, feedback: "" };

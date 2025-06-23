@@ -7,6 +7,7 @@ const functions = require("firebase-functions");
 // ユーザ定義
 const routeMessage = require("./handlers/routeMessage");
 const { generateMonthlyReport } = require("./tasks/generateMonthlyReport");
+const { checkResumableSessions } = require("./tasks/checkResumableSessions");
 const express = require("express");
 const { middleware} = require("@line/bot-sdk");
 const line = require("@line/bot-sdk");
@@ -96,3 +97,23 @@ exports.webhook = functions.https.onRequest({
   memory: '256MiB',
   invoker: 'public'
 }, app);
+
+// ✅ 「あとでやる」スケジューラー（1時間ごと）
+exports.scheduledSessionResume = functions.scheduler.onSchedule({
+  schedule: "0 * * * *",
+  timeZone: "Asia/Tokyo",
+  region: "asia-northeast1"
+}, async () => {
+  console.log("⏰ Running scheduled session check...");
+  await checkResumableSessions(client);
+});
+
+// ✅ 月次レポート（毎日朝8時）
+exports.scheduledMonthlyReport = functions.scheduler.onSchedule({
+  schedule: "0 8 * * *",
+  timeZone: "Asia/Tokyo",
+  region: "asia-northeast1"
+}, async () => {
+  console.log("📅 Running monthly report generation...");
+  await generateMonthlyReport();
+});

@@ -3,9 +3,14 @@ const { saveSession } = require("../utils/session");
 const checkEnglishGrammar = require("../utils/checkEnglishGrammar");
 const admin = require("../utils/firebaseAdmin");
 
-module.exports = async function handleEnglishInput({ event, client, session }) {
+module.exports = async function handleEnglishInput({ event, client, session }, audioScript = null) {
   const userId = event.source.userId;
-  const userSentence = event.message.text.trim();
+  let userSentence = null;
+  if(audioScript){
+    userSentence = audioScript;
+  }else{
+    userSentence = event.message.text.trim();
+  }
 
   // ✅ 文法チェック（GPT）
   const { isCorrect, feedback } = await checkEnglishGrammar(userSentence);

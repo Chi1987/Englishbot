@@ -4,12 +4,6 @@ const nodemailer = require("nodemailer");
 const dayjs = require("dayjs");
 require("dayjs/locale/ja");
 dayjs.locale("ja");
-require("dotenv").config();
-
-// ✅ initializeApp を重複させない
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
 
 const db = admin.firestore();
 
@@ -29,9 +23,13 @@ async function generateMonthlyReport() {
   for (const doc of sessionsSnapshot.docs) {
     const data = doc.data();
     const userId = doc.id;
-    if (!data.joinedAt) continue;
+    const userdata = await db
+      .collection("users")
+      .doc(userId)
+      .get();
+    if (!userdata.exists || !userdata.joinedAt) continue;
 
-    const joinedAt = dayjs(data.joinedAt);
+    const joinedAt = dayjs(userdata.joinedAt);
     const daysPassed = today.diff(joinedAt, "day");
     if (daysPassed < 30) continue;
 

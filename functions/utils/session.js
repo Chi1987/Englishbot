@@ -1,9 +1,4 @@
-const admin = require("firebase-admin");
-
-// Firebase Admin SDK 初期化（複数回呼ばれても安全）
-if (!admin.apps.length) {
-  admin.initializeApp();
-}
+const admin = require("./firebaseAdmin");
 
 const db = admin.firestore();
 
