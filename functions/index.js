@@ -8,6 +8,7 @@ const functions = require("firebase-functions");
 const routeMessage = require("./handlers/routeMessage");
 const { generateMonthlyReport } = require("./tasks/generateMonthlyReport");
 const { checkResumableSessions } = require("./tasks/checkResumableSessions");
+const admin = require("./utils/firebaseAdmin");
 const express = require("express");
 const { middleware} = require("@line/bot-sdk");
 const line = require("@line/bot-sdk");
@@ -55,38 +56,59 @@ app.post("/", middleware(config), async (req, res) => {
     if (!events || events.length === 0) {
         return res.status(200).send("No events");
     }
+    
     let replyToken = events[0].replyToken;
     console.log("replyToken:", replyToken);
-    try{
+    
+    try {
         for (const event of events) {
-            console.log("event:", event);
+            console.log("📨 Processing event:", {
+              type: event.type,
+              messageId: event.message?.id,
+              userId: event.source?.userId,
+              isRedelivery: event.deliveryContext?.isRedelivery
+            });
+            
             replyToken = event.replyToken;
-            if(event.deliveryContext.isRedelivery){
-                // LINEからの再送の場合は処理しない
-                console.log("Lineからの再送:" , event.message.text);
+            
+            // 再配信チェック（LINE側の標準機能）- これだけで十分
+            if (event.deliveryContext?.isRedelivery) {
+                console.log("🔄 LINE redelivery detected, skipping:", event.message?.text);
                 continue;
             }
+            
+            // メッセージ処理
             if (event.type === "message") {
                 await routeMessage({ event, client });
             }
         }
-        console.log("イベント処理完了");
+        
+        console.log("✅ イベント処理完了");
         res.status(200).send("OK");
-    }catch(error){
-        console.error("エラーが発生しました:", error);
-        if(error.originalError?.response){
-            console.error("レスポンス:" , error.originalError.response);
+    } catch(error) {
+        console.error("❌ エラーが発生しました:", error);
+        
+        if (error.originalError?.response) {
+            console.error("📄 レスポンス:", error.originalError.response);
         }
-        if(error.originalError?.response.data){
-            console.error("レスポンス詳細:" , error.originalError.response.data);
+        if (error.originalError?.response?.data) {
+            console.error("📋 レスポンス詳細:", error.originalError.response.data);
         }
-        await client.replyMessage(replyToken, {
-            type: "text",
-            text: "ごめんね、ちょっと調子が悪いみたい💦もう一度話しかけてね！",
-        });
+        
+        // エラー時の安全な応答
+        try {
+            if (replyToken && !replyToken.startsWith('00000000')) { // 無効なreplyTokenチェック
+                await client.replyMessage(replyToken, {
+                    type: "text",
+                    text: "ごめんね、ちょっと調子が悪いみたい💦もう一度話しかけてね！",
+                });
+            }
+        } catch (replyError) {
+            console.error("❌ Error sending error reply:", replyError);
+        }
+        
         res.status(200).send("OK but error");
     }
-    
 });
 
 // ✅ Cloud Functions エクスポート

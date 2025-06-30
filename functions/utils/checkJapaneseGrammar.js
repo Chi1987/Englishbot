@@ -52,19 +52,78 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
     // JSONが余分なテキスト付きで返ることがあるため正規化
     const jsonStart = result.indexOf("{");
     const jsonEnd = result.lastIndexOf("}");
+    
     if (jsonStart >= 0 && jsonEnd >= 0) {
       const jsonLike = result.substring(jsonStart, jsonEnd + 1);
-      const parsed = JSON.parse(jsonLike);
-      if (parsed && typeof parsed === 'object') {
-        console.log("✅ Parsed Grammar Check JSON:", parsed);
-        return parsed;
+      
+      try {
+        const parsed = JSON.parse(jsonLike);
+        
+        // Validate structure
+        if (parsed && typeof parsed === 'object' && parsed.sentence1 && parsed.sentence2 && parsed.sentence3) {
+          console.log("✅ Parsed Grammar Check JSON:", parsed);
+          return parsed;
+        } else {
+          throw new Error("Invalid JSON structure: missing required sentences");
+        }
+      } catch (parseError) {
+        console.error("❌ JSON parsing failed in checkJapaneseGrammar:", parseError);
+        console.error("Raw JSON string:", jsonLike);
+        
+        // Fallback response
+        return {
+          sentence1: {
+            correctedSentence: sentences[0] || "修正できませんでした",
+            feedback: "申し訳ございません。文法チェック処理中にエラーが発生しました。"
+          },
+          sentence2: {
+            correctedSentence: sentences[1] || "修正できませんでした", 
+            feedback: "申し訳ございません。文法チェック処理中にエラーが発生しました。"
+          },
+          sentence3: {
+            correctedSentence: sentences[2] || "修正できませんでした",
+            feedback: "申し訳ございません。文法チェック処理中にエラーが発生しました。"
+          }
+        };
       }
     }
     
-    throw new Error("JSON形式でのレスポンスの解析に失敗しました。");
+    // If no valid JSON structure found, return fallback
+    console.error("❌ No valid JSON found in grammar check response");
+    console.error("Raw response:", result);
+    
+    return {
+      sentence1: {
+        correctedSentence: sentences[0] || "修正できませんでした",
+        feedback: "文法チェックサービスが一時的に利用できません。"
+      },
+      sentence2: {
+        correctedSentence: sentences[1] || "修正できませんでした",
+        feedback: "文法チェックサービスが一時的に利用できません。"
+      },
+      sentence3: {
+        correctedSentence: sentences[2] || "修正できませんでした", 
+        feedback: "文法チェックサービスが一時的に利用できません。"
+      }
+    };
 
   } catch (e) {
     console.error("❌ 文法チェック中にエラー:", e);
-    return ["文法チェック中にエラーが発生しました。"];
+    
+    // Return consistent fallback structure
+    return {
+      sentence1: {
+        correctedSentence: sentences[0] || "修正できませんでした",
+        feedback: "文法チェック中にエラーが発生しました。しばらく時間をおいてからお試しください。"
+      },
+      sentence2: {
+        correctedSentence: sentences[1] || "修正できませんでした",
+        feedback: "文法チェック中にエラーが発生しました。しばらく時間をおいてからお試しください。"
+      },
+      sentence3: {
+        correctedSentence: sentences[2] || "修正できませんでした",
+        feedback: "文法チェック中にエラーが発生しました。しばらく時間をおいてからお試しください。"
+      }
+    };
   }
 };

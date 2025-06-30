@@ -1,9 +1,5 @@
 // utils/wordLookup.js
-const OpenAI = require("openai");
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+const { chatCompletion } = require("./openaiClient");
 
 async function getEnglishWordFor(japanesePhrase, currentPrompt) {
   const prompt = [
@@ -19,9 +15,8 @@ async function getEnglishWordFor(japanesePhrase, currentPrompt) {
     "",
     "JSON形式以外では回答しないでください。元文を英訳して解答を教えるのはやめてください。あくまで自主性を重んじます。",
   ].join("\n");
-  const res = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
+  try {
+    const res = await chatCompletion([
       {
         role: "system",
         content: prompt
@@ -33,14 +28,43 @@ async function getEnglishWordFor(japanesePhrase, currentPrompt) {
           `元文は「${currentPrompt}」です`
         ].join("\n")
       }
-    ],
-    temperature: 0
-  });
+    ]);
 
-  const jsonResponse = JSON.parse(res.choices[0].message.content.trim());
-  const { englishWord, explanation } = jsonResponse;
-  
-  return { englishWord, explanation };
+    const responseContent = res?.content?.trim();
+    if (!responseContent) {
+      throw new Error("Empty response from OpenAI API");
+    }
+
+    // Safe JSON parsing with fallback
+    try {
+      const jsonResponse = JSON.parse(responseContent);
+      const { englishWord, explanation } = jsonResponse;
+      
+      // Validate required fields
+      if (!englishWord || !explanation) {
+        throw new Error("Missing required fields in API response");
+      }
+      
+      return { englishWord, explanation };
+    } catch (parseError) {
+      console.error("JSON parsing failed for wordLookup:", parseError);
+      console.error("Raw response:", responseContent);
+      
+      // Fallback response
+      return {
+        englishWord: japanesePhrase,
+        explanation: "申し訳ございません。翻訳処理中にエラーが発生しました。もう一度お試しください。"
+      };
+    }
+  } catch (apiError) {
+    console.error("OpenAI API error in wordLookup:", apiError);
+    
+    // Fallback response for API errors
+    return {
+      englishWord: japanesePhrase,
+      explanation: "現在、翻訳サービスに接続できません。しばらく時間をおいてからお試しください。"
+    };
+  }
 }
 
 module.exports = { getEnglishWordFor };

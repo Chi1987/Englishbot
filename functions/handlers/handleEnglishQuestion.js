@@ -1,8 +1,6 @@
-const { OpenAI } = require("openai");
+const { chatCompletion } = require("../utils/openaiClient");
 const admin = require("firebase-admin");
 require("dotenv").config();
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 if (!admin.apps.length) {
   admin.initializeApp();
@@ -21,15 +19,12 @@ module.exports = async function handleEnglishQuestion({ event, client, session }
 難しい説明や文法用語は避けて、初心者にもわかりやすく答えてください。
 `;
 
-    const res = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userQuestion }
-      ],
-    });
+    const res = await chatCompletion([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userQuestion }
+    ]);
 
-    const replyText = res.choices[0].message.content.trim();
+    const replyText = res.content.trim();
 
     // ✅ Firestoreに保存
     await db.collection("english_questions").doc(userId).collection("logs").add({

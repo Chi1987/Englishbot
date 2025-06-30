@@ -1,7 +1,5 @@
-const { OpenAI } = require("openai");
+const { getGptResponse } = require("./openaiClient");
 require("dotenv").config();
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 async function isEnglishQuestion(messageText) {
   const prompt = `
@@ -15,13 +13,9 @@ async function isEnglishQuestion(messageText) {
 ${messageText}
   `;
 
-  const res = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [{ role: "user", content: prompt }],
-  });
-
-  const answer = res.choices[0].message.content.trim().toLowerCase();
-  return answer.includes("true");
+  const answer = await getGptResponse(prompt);
+  const normalizedAnswer = answer.trim().toLowerCase();
+  return normalizedAnswer.includes("true");
 }
 
 module.exports = { isEnglishQuestion };

@@ -16,16 +16,130 @@ const handleEnglishInput = require("./handleEnglishInput");
 const handleCorrection = require("./handleCorrection");
 const handleVoiceInput = require("./handleVoiceInput");
 
+/**
+ * ユーザー入力の検証とサニタイゼーション
+ */
+function validateAndSanitizeInput(text, maxLength = 1000) {
+  if (!text || typeof text !== 'string') {
+    return { isValid: false, sanitized: '', error: '無効な入力です。' };
+  }
+  
+  // 長さチェック
+  if (text.length > maxLength) {
+    return { 
+      isValid: false, 
+      sanitized: '', 
+      error: `入力が長すぎます。${maxLength}文字以内で入力してください。` 
+    };
+  }
+  
+  // 基本的なサニタイゼーション
+  let sanitized = text
+    .trim()
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '') // 制御文字除去
+    .replace(/\s+/g, ' '); // 連続する空白を一つに
+  
+  // 悪意のあるパターンをチェック
+  const maliciousPatterns = [
+    /<script[^>]*>/i,
+    /javascript:/i,
+    /on\w+\s*=/i,
+    /<iframe[^>]*>/i,
+    /eval\s*\(/i,
+    /function\s*\(/i
+  ];
+  
+  for (const pattern of maliciousPatterns) {
+    if (pattern.test(sanitized)) {
+      return { 
+        isValid: false, 
+        sanitized: '', 
+        error: '無効な文字が含まれています。' 
+      };
+    }
+  }
+  
+  return { isValid: true, sanitized, error: null };
+}
+
+/**
+ * ユーザーIDの検証
+ */
+function validateUserId(userId) {
+  if (!userId || typeof userId !== 'string') {
+    return false;
+  }
+  
+  // LINEユーザーIDの基本フォーマットチェック
+  const userIdPattern = /^[a-zA-Z0-9]{33}$/;
+  return userIdPattern.test(userId);
+}
+
+/**
+ * レート制限チェック用のキャッシュ
+ */
+const userRequestCache = new Map();
+const REQUEST_LIMIT = 10; // 1分間に10リクエストまで
+const RATE_LIMIT_WINDOW = 60000; // 1分間
+
+/**
+ * レート制限チェック
+ */
+function checkRateLimit(userId) {
+  const now = Date.now();
+  const userRequests = userRequestCache.get(userId) || [];
+  
+  // 古いリクエストを清理
+  const recentRequests = userRequests.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW);
+  
+  if (recentRequests.length >= REQUEST_LIMIT) {
+    return false;
+  }
+  
+  // 新しいリクエストを記録
+  recentRequests.push(now);
+  userRequestCache.set(userId, recentRequests);
+  
+  return true;
+}
+
 module.exports = async function routeMessage({ event, client }) {
   try {
     if (event.type !== "message") return;
 
     const userId = event.source.userId;
+    
+    // ユーザーID検証
+    if (!validateUserId(userId)) {
+      console.error('❌ Invalid userId:', userId);
+      return;
+    }
+    
+    // レート制限チェック
+    if (!checkRateLimit(userId)) {
+      console.log(`⏱️ Rate limit exceeded for user: ${userId}`);
+      return await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: "リクエストが多すぎます。しばらく時間をおいてからお試しください。"
+      });
+    }
+    
     const session = await getSession(userId);
     const step = session?.currentStep;
     const plan = await getUserPlan(userId);
     const messageType = event.message.type;
-    const userText = messageType === "text" ? event.message.text.trim() : "";
+    
+    let userText = "";
+    if (messageType === "text") {
+      const validation = validateAndSanitizeInput(event.message.text);
+      if (!validation.isValid) {
+        return await client.replyMessage(event.replyToken, {
+          type: "text",
+          text: validation.error
+        });
+      }
+      userText = validation.sanitized;
+    }
 
     // ✅ 強制リセット（初期化）
     if (userText === "こんにちは" || userText === "初期化") {
@@ -91,7 +205,7 @@ module.exports = async function routeMessage({ event, client }) {
     // ✅ fallback（未定義ステップ）
     return await client.replyMessage(event.replyToken, {
       type: "text",
-      text: `受け取ったよ：「${userText}」`
+      text: `受け取ったよ：「${userText.substring(0, 50)}${userText.length > 50 ? '...' : ''}」`
     });
 
   } catch (err) {
