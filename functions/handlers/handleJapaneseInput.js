@@ -1,6 +1,7 @@
 const { saveSession } = require("../utils/session");
 const checkJapaneseGrammar = require("../utils/checkJapaneseGrammar");
 const segmentJapanese = require("./segmentJapanese");
+const admin = require("../utils/firebaseAdmin");
 
 module.exports = async function handleJapaneseInput({ event, client, session }) {
   const userId = event.source.userId;
@@ -59,6 +60,20 @@ module.exports = async function handleJapaneseInput({ event, client, session }) 
   updatedSession.translationSegments = segments;
 
   await saveSession(userId, updatedSession);
+
+  // ✅ トピックログ（傾向分析用）にも保存
+  const docRef = admin.firestore().collection("topicsLog").doc(userId);
+  const doc = await docRef.get();
+  const existingCategories = doc.data()?.category || [];
+
+  const newCategories = [...existingCategories, grammarFeedbackData.category];
+
+  await docRef.set({
+    userId,
+    timestamp: new Date().toISOString(),
+    category: newCategories,
+    step: "japaneseInput"
+  });
 
   // ✅ メッセージを分割して返信（LINEは500文字まで）
   const messages = [];

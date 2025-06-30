@@ -9,5 +9,5 @@ const db = admin.firestore();
  */
 module.exports = async function getUserPlan(userId) {
   const doc = await db.collection("users").doc(userId).get();
-  return doc.exists && doc.data().plan ? doc.data().plan : "lite"; // デフォルトはlite
+  return doc.exists && doc.data()?.plan ? doc.data()?.plan : "lite"; // デフォルトはlite
 };

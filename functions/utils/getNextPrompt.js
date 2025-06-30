@@ -7,27 +7,32 @@ const db = admin.firestore();
  * @param {string} userId
  * @param {number} [indexFromSession] - セッションで管理された次のお題インデックス
  */
-async function getNextPrompt(userId, indexFromSession = null) {
+async function getNextPrompt(userId) {
   const userRef = db.collection("sessions").doc(userId);
   const userSnap = await userRef.get();
   const userData = userSnap.exists ? userSnap.data() : {};
 
   // セッション側の値を優先、それがなければユーザーデータ、それもなければ1
-  const currentIndex = userData.nextPromptIndex ?? 1;
-  const docId = String(currentIndex).padStart(3, "0");
+  const currentIndex = userData.nextPromptIndex ?? null;
+  if(currentIndex > 30){
+    return { text: userData.topics, nextIndex:  currentIndex + 1};
+  }else{
+    const docId = String(currentIndex).padStart(3, "0");
 
-  console.log("📘 getNextPrompt: loading prompt ID:", docId);
+    console.log("📘 getNextPrompt: loading prompt ID:", docId);
 
-  const promptDoc = await db.collection("prompts").doc(docId).get();
+    const promptDoc = await db.collection("prompts").doc(docId).get();
 
-  if (!promptDoc.exists || !promptDoc.data()?.prompt) {
-    console.warn(`⚠️ prompt ${docId} not found or missing 'prompt' field`);
-    return { text: "お題が見つかりませんでした。", nextIndex: currentIndex };
+    if (!promptDoc.exists || !promptDoc.data()?.prompt) {
+      console.warn(`⚠️ prompt ${docId} not found or missing 'prompt' field`);
+      return { text: "お題が見つかりませんでした。", nextIndex: currentIndex };
+    }
+
+    const promptText = promptDoc.data()?.prompt;
+
+    return { text: promptText, nextIndex: currentIndex + 1 };
   }
-
-  const promptText = promptDoc.data().prompt;
-
-  return { text: promptText, nextIndex: currentIndex + 1 };
+  
 }
 
 module.exports = { getNextPrompt };

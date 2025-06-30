@@ -1,7 +1,11 @@
  
-const { saveSession } = require("../utils/session");
+const saveScoreAndUpdateSession = require("../utils/saveScoreAndUpdateSession");
+const admin = require("../utils/firebaseAdmin");
 const checkEnglishGrammar = require("../utils/checkEnglishGrammar");
 const checkPronunciation = require("../utils/checkPronunciation");
+const analyzeUserTopics = require("../utils/analyzeUserTopics");
+const generateTopicsByCategory = require("../utils/generateTopicsByCategory");
+const saveCustomTopics = require("../utils/saveCustomTopics");
 
 module.exports = async function handleCorrection({ event, client, session }, audioScript = null) {
   const userId = event.source.userId;
@@ -32,12 +36,38 @@ module.exports = async function handleCorrection({ event, client, session }, aud
     pronunciationFeedback = pronunciationResult;
   }
 
+  // ✅ スコアデータの準備
+  const today = new Date();
+  const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
+  const scoreData = {
+    userSentence,
+    isCorrect,
+    feedback: feedback || null,
+    pronunciationFeedback: pronunciationFeedback || null,
+    timestamp: admin.firestore.FieldValue.serverTimestamp()
+  };
+
   if (isCorrect) {
     const messages = [];
     if(segmentStep === "done"){
-      await saveSession(userId, {
+      // 正解だった場合
+      let nextPromptIndex = session.nextPromptIndex;
+      let topics = "";
+
+      // 30問完了後の自動生成フェーズ
+      if (nextPromptIndex > 30) {
+        const category = await analyzeUserTopics(userId);
+        const generatedTopics = await generateTopicsByCategory(category);
+        await saveCustomTopics(userId, generatedTopics[0], category);
+
+        topics = generatedTopics[0];
+      }
+
+      // アトミックなスコア保存とセッション更新
+      await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
         ...session,
-        currentStep: null
+        currentStep: null,
+        topics: topics,
       });
       let successText = "よくできました！この英文は正しく書けています。";
       if (pronunciationFeedback) {
@@ -71,7 +101,8 @@ module.exports = async function handleCorrection({ event, client, session }, aud
       const sentenceIndex = session.currentSentence || "sentence1";
       const segments = session.translationSegments || [];
       const currentSegment = segments[sentenceIndex][segmentIndex];
-      await saveSession(userId, {
+      // アトミックなスコア保存とセッション更新
+      await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
         ...session,
         currentStep: "awaitingTranslationWords"
       });
@@ -105,6 +136,14 @@ module.exports = async function handleCorrection({ event, client, session }, aud
 
     await client.replyMessage(event.replyToken, messages);
   } else {
+    // アトミックなスコア保存とセッション更新
+    await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
+      ...session,
+      currentStep: "done",
+      finalEnglish: userSentence,
+      englishFeedback: feedback
+    });
+
     let correctionText = [
       "まだ修正点があります。",
       "【文法フィードバック】",

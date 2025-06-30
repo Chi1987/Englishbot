@@ -13,6 +13,17 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
     "・「仕事してます」→「私は私の仕事をしています」",
     "・「見てます」→「私はテレビを見ています」",
     "",
+    "また、回答された3つの日本語文に共通する話題のカテゴリを日本語単語1つで表してください。共通するものがなかったら何か適当なものでも構いません。",
+    "",
+    "例：",
+    "・旅行",
+    "・食事",
+    "・仕事",
+    "・趣味",
+    "・家族",
+    "・健康",
+    "・その他",
+    "",
     "必ず以下のJSON形式で回答してください：",
     "{",
     '  "sentence1": {',
@@ -27,6 +38,7 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
     '    "correctedSentence": "修正後の文",',
     '    "feedback": "修正理由とフィードバック"',
     '  }',
+    '  "category": "カテゴリ"',
     "}",
     "",
     "JSON形式以外では回答しないでください。",
@@ -60,11 +72,11 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
         const parsed = JSON.parse(jsonLike);
         
         // Validate structure
-        if (parsed && typeof parsed === 'object' && parsed.sentence1 && parsed.sentence2 && parsed.sentence3) {
+        if (parsed && typeof parsed === 'object' && parsed.sentence1 && parsed.sentence2 && parsed.sentence3 && parsed.category) {
           console.log("✅ Parsed Grammar Check JSON:", parsed);
           return parsed;
         } else {
-          throw new Error("Invalid JSON structure: missing required sentences");
+          throw new Error("Invalid JSON structure: missing required sentences or category");
         }
       } catch (parseError) {
         console.error("❌ JSON parsing failed in checkJapaneseGrammar:", parseError);
@@ -83,7 +95,8 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
           sentence3: {
             correctedSentence: sentences[2] || "修正できませんでした",
             feedback: "申し訳ございません。文法チェック処理中にエラーが発生しました。"
-          }
+          },
+          category: "カテゴリ"
         };
       }
     }
@@ -104,7 +117,8 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
       sentence3: {
         correctedSentence: sentences[2] || "修正できませんでした", 
         feedback: "文法チェックサービスが一時的に利用できません。"
-      }
+      },
+      category: "カテゴリ"
     };
 
   } catch (e) {
@@ -123,7 +137,8 @@ module.exports = async function checkJapaneseGrammar(sentences, currentPrompt) {
       sentence3: {
         correctedSentence: sentences[2] || "修正できませんでした",
         feedback: "文法チェック中にエラーが発生しました。しばらく時間をおいてからお試しください。"
-      }
+      },
+      category: "カテゴリ"
     };
   }
 };
