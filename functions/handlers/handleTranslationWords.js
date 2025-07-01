@@ -1,6 +1,8 @@
 // handlers/handleTranslationWords.js
 const { saveSession } = require("../utils/session");
 const { getEnglishWordFor } = require("../utils/wordLookup"); // 英単語を返す関数
+const saveScoreAndUpdateSession = require("../utils/saveScoreAndUpdateSession");
+const admin = require("../utils/firebaseAdmin");
 
 module.exports = async function handleTranslationWords({ event, client, session }) {
   const userId = event.source.userId;
@@ -27,6 +29,21 @@ module.exports = async function handleTranslationWords({ event, client, session 
   }
 
   translated.push(englishWord);
+
+  // わからなかった単語を記録
+  if (unknownFlag) {
+    const today = new Date();
+    const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
+    const scoreData = {
+      unknownWords: [currentSegment], // わからなかった日本語単語を保存
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // 非同期でスコア保存（メイン処理をブロックしない）
+    saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {}).catch(error => {
+      console.error('Failed to save unknown word:', error);
+    });
+  }
 
   const nextIndex = segmentIndex + 1;
 

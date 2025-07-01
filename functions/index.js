@@ -132,7 +132,7 @@ exports.scheduledSessionResume = functions.scheduler.onSchedule({
 
 // ✅ 月次レポート（毎日朝8時）
 exports.scheduledMonthlyReport = functions.scheduler.onSchedule({
-  schedule: "0 8 * * *",
+  schedule: "0 8 1 * *",
   timeZone: "Asia/Tokyo",
   region: "asia-northeast1"
 }, async () => {

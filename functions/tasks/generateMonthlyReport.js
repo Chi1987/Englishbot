@@ -23,24 +23,48 @@ async function generateMonthlyReport() {
   for (const doc of sessionsSnapshot.docs) {
     const data = doc.data();
     const userId = doc.id;
+    
+    // セッションデータが存在しない場合をチェック
+    if (!data) continue;
+    
     const userdata = await db
       .collection("users")
       .doc(userId)
       .get();
-    if (!userdata.exists || !userdata.joinedAt) continue;
+    const userData = userdata.data();
+    if (!userdata.exists || !userData?.joinedAt || userData?.plan !== "full") continue;
 
-    const joinedAt = dayjs(userdata.joinedAt);
+    const joinedAt = dayjs(userData.joinedAt);
     const daysPassed = today.diff(joinedAt, "day");
-    if (daysPassed < 30) continue;
+    
+    // 先月の範囲を計算
+    const lastMonth = today.subtract(1, 'month');
+    const lastMonthStart = lastMonth.startOf('month');
+    const lastMonthEnd = lastMonth.endOf('month');
+    
+    // ユーザーが先月開始前に参加していることを確認
+    if (joinedAt.isAfter(lastMonthEnd)) continue;
 
+    // 先月のデータのみを取得
+    const lastMonthStartStr = lastMonthStart.format('YYYYMMDD');
+    const lastMonthEndStr = lastMonthEnd.format('YYYYMMDD');
+    
     const scoresSnapshot = await db
       .collection("scores")
       .doc(userId)
       .collection("daily")
+      .where(admin.firestore.FieldPath.documentId(), '>=', lastMonthStartStr)
+      .where(admin.firestore.FieldPath.documentId(), '<=', lastMonthEndStr)
       .get();
 
-    const scoreDocs = scoresSnapshot.docs.map((d) => d.data());
+    // スコアデータが存在しない場合をチェック
+    if (scoresSnapshot.empty) continue;
+    
+    const scoreDocs = scoresSnapshot.docs.map((d) => d.data()).filter(Boolean);
     const totalEntries = scoreDocs.length;
+    
+    // 有効なスコアデータがない場合はスキップ
+    if (totalEntries === 0) continue;
 
     const grammarStats = {
       noSubject: 0,
@@ -53,29 +77,42 @@ async function generateMonthlyReport() {
     const unknownWordSet = new Set();
 
     for (const entry of scoreDocs) {
-      const g = entry.grammarIssues || {};
-      grammarStats.noSubject += g.noSubject || 0;
-      grammarStats.tense += g.tense || 0;
-      grammarStats.article += g.article || 0;
-      grammarStats.other += g.other || 0;
+      // entryがnullまたはundefinedの場合をチェック
+      if (!entry) continue;
+      
+      // 新しいerrorCounts構造から文法統計を集計
+      if (entry.errorCounts && typeof entry.errorCounts === 'object') {
+        grammarStats.noSubject += entry.errorCounts.subjectMissing || 0;
+        grammarStats.tense += entry.errorCounts.tenseErrors || 0;
+        grammarStats.article += entry.errorCounts.articleErrors || 0;
+        grammarStats.other += entry.errorCounts.others || 0;
+      }
 
-      if (entry.englishMistake) englishMistakes++;
+      // 英文ミス回数を累積
+      if (entry.englishMistakes && typeof entry.englishMistakes === 'number') {
+        englishMistakes += entry.englishMistakes;
+      }
 
-      const unknown = entry.unknownWords || [];
+      // unknownWordsが配列であることを確認
+      const unknown = Array.isArray(entry.unknownWords) ? entry.unknownWords : [];
       unknownWordCount += unknown.length;
-      unknown.forEach((w) => unknownWordSet.add(w));
+      unknown.forEach((w) => {
+        if (w && typeof w === 'string') {
+          unknownWordSet.add(w);
+        }
+      });
     }
 
     usersToReport.push({
       userId,
       name: data.name || "(no name)",
-      birthday: data.birthday || "",
+      birthday: data.birthday || "(未設定)",
       daysPassed,
       totalEntries,
-      grammarStats,
-      englishMistakes,
-      unknownWordCount,
-      unknownWords: Array.from(unknownWordSet),
+      grammarStats: grammarStats || { noSubject: 0, tense: 0, article: 0, other: 0 },
+      englishMistakes: englishMistakes || 0,
+      unknownWordCount: unknownWordCount || 0,
+      unknownWords: Array.from(unknownWordSet) || [],
     });
   }
 

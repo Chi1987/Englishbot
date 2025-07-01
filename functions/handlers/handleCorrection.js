@@ -27,7 +27,7 @@ module.exports = async function handleCorrection({ event, client, session }, aud
     beforeSentence = "sentence3"
   }
   const fullSentence = segments[beforeSentence].join('');
-  const { isCorrect, feedback } = await checkEnglishGrammar(userSentence, fullSentence);
+  const { isCorrect, feedback, errorCounts } = await checkEnglishGrammar(userSentence, fullSentence);
   
   // ✅ 発音チェック（音声入力の場合のみ）
   let pronunciationFeedback = null;
@@ -43,6 +43,8 @@ module.exports = async function handleCorrection({ event, client, session }, aud
     userSentence,
     isCorrect,
     feedback: feedback || null,
+    errorCounts: errorCounts || null,
+    englishMistakes: isCorrect ? 0 : 1,
     pronunciationFeedback: pronunciationFeedback || null,
     timestamp: admin.firestore.FieldValue.serverTimestamp()
   };

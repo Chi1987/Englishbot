@@ -21,11 +21,60 @@ async function saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, sessionDat
       const currentSession = await transaction.get(sessionRef);
       const currentScore = await transaction.get(scoreRef);
       
-      // スコアデータをマージ
+      // スコアデータをマージ（errorCountsは加算）
       const existingScoreData = currentScore.exists ? currentScore.data() : {};
+      
+      // errorCountsの加算処理
+      let mergedErrorCounts = null;
+      if (scoreData.errorCounts || existingScoreData.errorCounts) {
+        const existingCounts = existingScoreData.errorCounts || {
+          subjectMissing: 0,
+          tenseErrors: 0,
+          articleErrors: 0,
+          others: 0
+        };
+        const newCounts = scoreData.errorCounts || {
+          subjectMissing: 0,
+          tenseErrors: 0,
+          articleErrors: 0,
+          others: 0
+        };
+        
+        mergedErrorCounts = {
+          subjectMissing: existingCounts.subjectMissing + newCounts.subjectMissing,
+          tenseErrors: existingCounts.tenseErrors + newCounts.tenseErrors,
+          articleErrors: existingCounts.articleErrors + newCounts.articleErrors,
+          others: existingCounts.others + newCounts.others
+        };
+      }
+      
+      // englishMistakesの累積処理
+      let mergedEnglishMistakes = existingScoreData.englishMistakes || 0;
+      if (scoreData.englishMistakes) {
+        mergedEnglishMistakes += scoreData.englishMistakes;
+      }
+      
+      // unknownWordsの累積処理（重複除去）
+      let mergedUnknownWords = existingScoreData.unknownWords || [];
+      if (scoreData.unknownWords && Array.isArray(scoreData.unknownWords)) {
+        const existingSet = new Set(mergedUnknownWords);
+        scoreData.unknownWords.forEach(word => {
+          if (!existingSet.has(word)) {
+            mergedUnknownWords.push(word);
+            existingSet.add(word);
+          }
+        });
+      }
+      
+      // scoreDataからerrorCounts、englishMistakes、unknownWordsを除外してマージ
+      const { errorCounts: _, englishMistakes: __, unknownWords: ___, ...scoreDataWithoutSpecialCounts } = scoreData;
+      
       const mergedScoreData = {
         ...existingScoreData,
-        ...scoreData,
+        ...scoreDataWithoutSpecialCounts,
+        ...(mergedErrorCounts && { errorCounts: mergedErrorCounts }),
+        englishMistakes: mergedEnglishMistakes,
+        unknownWords: mergedUnknownWords,
         lastUpdated: admin.firestore.FieldValue.serverTimestamp()
       };
       
