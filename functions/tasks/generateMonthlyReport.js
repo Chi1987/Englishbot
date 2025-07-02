@@ -34,7 +34,18 @@ async function generateMonthlyReport() {
     const userData = userdata.data();
     if (!userdata.exists || !userData?.joinedAt || userData?.plan !== "full") continue;
 
-    const joinedAt = dayjs(userData.joinedAt);
+    // joinedAtのデータ形式を確実に処理（Firestore Timestamp型と文字列型の両方に対応）
+    let joinedAt;
+    if (userData.joinedAt && typeof userData.joinedAt.toDate === 'function') {
+      // Firestore Timestamp型の場合
+      joinedAt = dayjs(userData.joinedAt.toDate());
+    } else if (userData.joinedAt) {
+      // 文字列型の場合
+      joinedAt = dayjs(userData.joinedAt);
+    } else {
+      continue; // joinedAtが無効な場合はスキップ
+    }
+    
     const daysPassed = today.diff(joinedAt, "day");
     
     // 先月の範囲を計算
