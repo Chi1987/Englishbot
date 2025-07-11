@@ -6,6 +6,7 @@ const admin = require("../utils/firebaseAdmin");
 const analyzeUserTopics = require("../utils/analyzeUserTopics");
 const generateTopicsByCategory = require("../utils/generateTopicsByCategory");
 const saveCustomTopics = require("../utils/saveCustomTopics");
+const createSuccessMessage = require("../utils/createSuccessMessage");
 
 module.exports = async function handleEnglishInput({ event, client, session }, audioScript = null) {
   const userId = event.source.userId;
@@ -72,17 +73,8 @@ module.exports = async function handleEnglishInput({ event, client, session }, a
         currentStep: null,
         topics: topics,
       });
-      let successText = "よくできました！この英文は正しく書けています。";
-      if (pronunciationFeedback) {
-        successText += "\n\n【発音フィードバック】\n" + pronunciationFeedback.feedback;
-        if (pronunciationFeedback.tips) {
-          successText += "\n\n【発音のコツ】\n" + pronunciationFeedback.tips;
-        }
-      }
-      messages.push({
-        type: "text",
-        text: successText
-      });
+      const successMessages = createSuccessMessage(pronunciationFeedback);
+      messages.push(...successMessages);
       messages.push({
         type: "text",
         text: "次のお題はいつやりますか？",
@@ -110,17 +102,8 @@ module.exports = async function handleEnglishInput({ event, client, session }, a
         ...session,
         currentStep: "awaitingTranslationWords"
       });
-      let successText = "よくできました！この英文は正しく書けています。";
-      if (pronunciationFeedback) {
-        successText += "\n\n【発音フィードバック】\n" + pronunciationFeedback.feedback;
-        if (pronunciationFeedback.tips) {
-          successText += "\n\n【発音のコツ】\n" + pronunciationFeedback.tips;
-        }
-      }
-      messages.push({
-        type: "text",
-        text: successText
-      });
+      const successMessages = createSuccessMessage(pronunciationFeedback);
+      messages.push(...successMessages);
       messages.push({
         type: "text",
         text: [

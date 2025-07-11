@@ -15,6 +15,7 @@ const handleTranslationWords = require("./handleTranslationWords");
 const handleEnglishInput = require("./handleEnglishInput");
 const handleCorrection = require("./handleCorrection");
 const handleVoiceInput = require("./handleVoiceInput");
+const handleQuestion = require("./handleQuestion");
 
 /**
  * ユーザー入力の検証とサニタイゼーション
@@ -179,8 +180,13 @@ module.exports = async function routeMessage({ event, client }) {
       return await handleLaterChoice({ event, client, session });
     }
 
+    // ✅ 「質問する」はここで処理
+    if (userText === "質問する") {
+      return await handleQuestion({ event, client, session });
+    }
+
     // ✅ 英語に関する質問を処理（stepが未設定 or paused の場合）
-    if (!step || step === "paused") {
+    if (step === "question") {
       const isAllowed = await isEnglishQuestion(userText);
       if (!isAllowed) {
         return await client.replyMessage(event.replyToken, {
