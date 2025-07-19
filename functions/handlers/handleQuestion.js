@@ -4,7 +4,7 @@ module.exports = async function handleQuestion({ event, client, session }) {
   const userId = event.source.userId;
   await saveSession(userId, {
     ...session,
-    currentStep: "question"
+    questionFlag: true
   });
 
   await client.replyMessage(event.replyToken, {

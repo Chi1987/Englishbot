@@ -40,10 +40,8 @@ module.exports = async function handleTranslationWords({ event, client, session 
     if (!isCorrect) {
       // 不正解の場合、正解を含めたフィードバック
       feedback = [
-        `「${userInput}」は惜しいです！`,
-        `正解は「${englishWord}」です。`,
-        explanation,
-        result.feedback
+        result.feedback,
+        explanation
       ].join("\n");
     }
   }

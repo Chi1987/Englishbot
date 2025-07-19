@@ -16,6 +16,7 @@ const handleEnglishInput = require("./handleEnglishInput");
 const handleCorrection = require("./handleCorrection");
 const handleVoiceInput = require("./handleVoiceInput");
 const handleQuestion = require("./handleQuestion");
+const { saveSession } = require("../utils/session");
 
 /**
  * ユーザー入力の検証とサニタイゼーション
@@ -127,6 +128,7 @@ module.exports = async function routeMessage({ event, client }) {
     
     const session = await getSession(userId);
     const step = session?.currentStep;
+    const questionFlag = session?.questionFlag;
     const plan = await getUserPlan(userId);
     const messageType = event.message.type;
     
@@ -153,9 +155,34 @@ module.exports = async function routeMessage({ event, client }) {
       return await handleInitSetup({ event, client, session: resetSession });
     }
 
+    // ✅ 「質問する」はここで処理
+    if (userText === "質問する") {
+      return await handleQuestion({ event, client, session });
+    }
+
     // ✅ 「今やる」はどのステップでも機能させる
     if (userText === "今やる") {
+      if(questionFlag) {
+        await saveSession(userId, {
+          ...session,
+          questionFlag: false
+        });
+      }
       return await handleNowChoice({ event, client, session });
+    }
+
+    // ✅ 英語に関する質問を処理（stepが未設定 or paused の場合）
+    if (questionFlag) {
+      const isAllowed = await isEnglishQuestion(userText);
+      if (!isAllowed) {
+        return await client.replyMessage(event.replyToken, {
+          type: "text",
+          text:
+            "ごめんなさい。このBotでは英語に関する質問だけを受け付けています🙏\nたとえば：\n・「“撫でる”って英語で何て言うの？」\n・「“頑張って”って英語でどう言うの？」\nなど、お気軽に聞いてください！",
+        });
+      }
+
+      return await handleEnglishQuestion({ event, client, session });
     }
 
     // ✅ 初期設定（名前・誕生日）がまだなら
@@ -178,25 +205,6 @@ module.exports = async function routeMessage({ event, client }) {
     // ✅ 「あとでやる」はここで処理
     if (userText === "あとでやる") {
       return await handleLaterChoice({ event, client, session });
-    }
-
-    // ✅ 「質問する」はここで処理
-    if (userText === "質問する") {
-      return await handleQuestion({ event, client, session });
-    }
-
-    // ✅ 英語に関する質問を処理（stepが未設定 or paused の場合）
-    if (step === "question") {
-      const isAllowed = await isEnglishQuestion(userText);
-      if (!isAllowed) {
-        return await client.replyMessage(event.replyToken, {
-          type: "text",
-          text:
-            "ごめんなさい。このBotでは英語に関する質問だけを受け付けています🙏\nたとえば：\n・「“撫でる”って英語で何て言うの？」\n・「“頑張って”って英語でどう言うの？」\nなど、お気軽に聞いてください！",
-        });
-      }
-
-      return await handleEnglishQuestion({ event, client, session });
     }
 
     // ✅ 段階ごとの処理
