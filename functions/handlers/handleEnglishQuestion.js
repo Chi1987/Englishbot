@@ -1,5 +1,6 @@
 const { chatCompletion } = require("../utils/openaiClient");
 const admin = require("firebase-admin");
+const { saveSession } = require("../utils/session");
 require("dotenv").config();
 
 if (!admin.apps.length) {
@@ -14,9 +15,24 @@ module.exports = async function handleEnglishQuestion({ event, client, session }
   try {
     const systemPrompt = `
 あなたは優しい英語の先生です。
-ユーザーが日常生活で「これって英語でどう言うの？」と聞いた時に、単語やフレーズを教えてください。
-できればその言葉の使い方や例文も簡単に教えてあげてください。
-難しい説明や文法用語は避けて、初心者にもわかりやすく答えてください。
+ユーザーが英語についての質問をしてくるので、優しく丁寧に答えてください。
+以下のようなカジュアルなやり取りが来た場合には、簡単な返答をしてください。
+
+ユーザー：「ありがとう」
+→「どういたしまして！またいつでも質問してくださいね😊」
+
+ユーザー：「分かりました！」
+→「それは良かったです✨引き続き頑張ってください！」
+
+ただし、恋愛・プライベートなど学習目的から逸脱した内容（例：「彼氏が〜」）には「それはちょっと答えられません🙏」と返してください。
+
+会話が終わったら、endflagをtrueにしてください。
+必ずJSON形式で返答してください。
+{
+  "answer": "返答内容",
+  "endflag": "true" or "false"
+}
+JSON形式以外では返答しないでください。
 `;
 
     const res = await chatCompletion([
@@ -25,17 +41,25 @@ module.exports = async function handleEnglishQuestion({ event, client, session }
     ]);
 
     const replyText = res.content.trim();
+    const result = JSON.parse(replyText);
+
+    if(result.endflag === "true"){
+      await saveSession(userId, {
+        ...session,
+        questionFlag: false
+      });
+    }
 
     // ✅ Firestoreに保存
     await db.collection("english_questions").doc(userId).collection("logs").add({
       question: userQuestion,
-      answer: replyText,
+      answer: result.answer,
       timestamp: admin.firestore.FieldValue.serverTimestamp()
     });
 
     return await client.replyMessage(event.replyToken, {
       type: "text",
-      text: replyText,
+      text: result.answer,
     });
 
   } catch (error) {

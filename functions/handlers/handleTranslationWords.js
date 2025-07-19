@@ -1,6 +1,7 @@
 // handlers/handleTranslationWords.js
 const { saveSession } = require("../utils/session");
 const { getEnglishWordFor } = require("../utils/wordLookup"); // 英単語を返す関数
+const { checkWordTranslation } = require("../utils/checkWordTranslation"); // 単語の正解判定機能
 const saveScoreAndUpdateSession = require("../utils/saveScoreAndUpdateSession");
 const admin = require("../utils/firebaseAdmin");
 
@@ -13,27 +14,46 @@ module.exports = async function handleTranslationWords({ event, client, session 
   const translated = session.translatedWords || [];
 
   const currentSegment = segments[sentence][segmentIndex];
+  const fullSentence = segments[sentence].join('');
 
   let englishWord;
   let explanation;
+  let feedback;
   let unknownFlag = false;
+  let isCorrect = false;
+  
   if (userInput === "わからない") {
     // 英単語を取得してそのまま提示（ヒントではなく答え）
-    const fullSentence = segments[sentence].join('');
     const { englishWord: word, explanation: exp } = await getEnglishWordFor(currentSegment, fullSentence);
     englishWord = word;
     explanation = exp;
+    feedback = `「${currentSegment}」は英語で「${englishWord}」です。\n${explanation}`;
     unknownFlag = true;
   } else {
-    englishWord = userInput;
+    // ユーザーの翻訳を正解判定
+    const result = await checkWordTranslation(currentSegment, userInput, fullSentence);
+    isCorrect = result.isCorrect;
+    englishWord = result.correctAnswer; // 正解の単語を保存
+    explanation = result.explanation;
+    feedback = result.feedback;
+    
+    if (!isCorrect) {
+      // 不正解の場合、正解を含めたフィードバック
+      feedback = [
+        result.feedback,
+        explanation
+      ].join("\n");
+    }
   }
 
   translated.push(englishWord);
 
-  // わからなかった単語を記録
+  // スコア記録用の今日の日付
+  const today = new Date();
+  const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
+  
+  // 結果に応じてスコア保存
   if (unknownFlag) {
-    const today = new Date();
-    const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
     const scoreData = {
       unknownWords: [currentSegment], // わからなかった日本語単語を保存
       timestamp: admin.firestore.FieldValue.serverTimestamp()
@@ -42,6 +62,26 @@ module.exports = async function handleTranslationWords({ event, client, session 
     // 非同期でスコア保存（メイン処理をブロックしない）
     saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {}).catch(error => {
       console.error('Failed to save unknown word:', error);
+    });
+  } else if (isCorrect) {
+    const scoreData = {
+      correctWords: [currentSegment], // 正解した日本語単語を保存
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // 非同期でスコア保存（メイン処理をブロックしない）
+    saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {}).catch(error => {
+      console.error('Failed to save correct word:', error);
+    });
+  } else {
+    const scoreData = {
+      incorrectWords: [{ japanese: currentSegment, userAnswer: userInput, correctAnswer: englishWord }], // 不正解の詳細を保存
+      timestamp: admin.firestore.FieldValue.serverTimestamp()
+    };
+    
+    // 非同期でスコア保存（メイン処理をブロックしない）
+    saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {}).catch(error => {
+      console.error('Failed to save incorrect word:', error);
     });
   }
 
@@ -73,63 +113,37 @@ module.exports = async function handleTranslationWords({ event, client, session 
         currentSentence: nextSentence
       });
     }
-    if(unknownFlag){
-      await client.replyMessage(event.replyToken, {
-        type: "text",
-        text: [
-          `「${currentSegment}」は英語で「${englishWord}」です。`,
-          explanation,
-          "単語の入力が完了しました！",
-          "これらを並べて英文を作ってください。1文にまとめて送ってください。"
-        ].join("\n")
-      });
-    }else{
-      await client.replyMessage(event.replyToken, {
-        type: "text",
-        text: [
-          "単語の入力が完了しました！",
-          "これらを並べて英文を作ってください。1文にまとめて送ってください。"
-        ].join("\n")
-      });
-    }
+    await client.replyMessage(event.replyToken, {
+      type: "text",
+      text: [
+        feedback,
+        "",
+        "単語の入力が完了しました！",
+        "これらを並べて英文を作ってください。1文にまとめて送ってください。"
+      ].join("\n")
+    });
   } else {
     await saveSession(userId, {
       ...session,
       translatedWords: translated,
       currentSegmentIndex: nextIndex
     });
-    if(unknownFlag){
-      await client.replyMessage(event.replyToken, {
-        type: "text",
-        text: [
-          `「${currentSegment}」は英語で「${englishWord}」です。`,
-          explanation,
-          "",
-          "次の単語にいきます。",
-          `「${segments[sentence][segmentIndex + 1]}」を英語にすると？`
-        ].join("\n"),
-        quickReply: {
-          items: [
-            {
-              type: "action",
-              action: { type: "message", label: "わからない", text: "わからない" }
-            }
-          ]
-        }
-      });
-    }else{
-      await client.replyMessage(event.replyToken, {
-        type: "text",
-        text: `「${segments[sentence][nextIndex]}」を英語にすると？`,
-        quickReply: {
-          items: [
-            {
-              type: "action",
-              action: { type: "message", label: "わからない", text: "わからない" }
-            }
-          ]
-        }
-      });
-    }
+    await client.replyMessage(event.replyToken, {
+      type: "text",
+      text: [
+        feedback,
+        "",
+        "次の単語にいきます。",
+        `「${segments[sentence][nextIndex]}」を英語にすると？`
+      ].join("\n"),
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "わからない", text: "わからない" }
+          }
+        ]
+      }
+    });
   }
 };
