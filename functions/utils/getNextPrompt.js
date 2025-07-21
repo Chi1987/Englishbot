@@ -13,7 +13,7 @@ async function getNextPrompt(userId) {
   const userData = userSnap.exists ? userSnap.data() : {};
 
   // セッション側の値を優先、それがなければユーザーデータ、それもなければ1
-  const currentIndex = userData.nextPromptIndex ?? null;
+  const currentIndex = userData.nextPromptIndex ?? 1;
   if(currentIndex > 30){
     return { text: userData.topics, nextIndex:  currentIndex + 1};
   }else{
