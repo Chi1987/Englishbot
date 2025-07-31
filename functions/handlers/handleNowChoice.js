@@ -8,7 +8,16 @@ module.exports = async function handleNowChoice({ event, client, session }) {
   let promptText;
   let nextIndex;
 
+  const today = new Date();
+  const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
   try {
+    const lastGeneratedDate = session.lastGeneratedDate;
+    if(lastGeneratedDate === yyyyMMdd) {
+      return await client.replyMessage(event.replyToken, {
+        type: "text",
+        text: "今日はすでにお題をやりました。また明日挑戦してください！"
+      });
+    }
     const result = await getNextPrompt(userId);
     promptText = result?.text;
     nextIndex = result?.nextIndex;
@@ -28,6 +37,7 @@ module.exports = async function handleNowChoice({ event, client, session }) {
     });
   }
 
+
   // 🔄 セッションを初期化して保存（誤上書き防止のためpostSetupを強制true）
   await saveSession(userId, {
     currentStep: "awaitingJapanese",
@@ -37,7 +47,8 @@ module.exports = async function handleNowChoice({ event, client, session }) {
     japaneseInput: [],
     translatedWords: [],
     translationSegments: [],
-    currentSegmentIndex: 0
+    currentSegmentIndex: 0,
+    lastGeneratedDate: yyyyMMdd
   });
 
   return await client.replyMessage(event.replyToken, {

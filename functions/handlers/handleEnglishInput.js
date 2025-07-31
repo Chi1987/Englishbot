@@ -72,6 +72,7 @@ module.exports = async function handleEnglishInput({ event, client, session }, a
         ...session,
         currentStep: null,
         topics: topics,
+        questionFlag: true
       });
       const successMessages = createSuccessMessage(pronunciationFeedback);
       messages.push(...successMessages);

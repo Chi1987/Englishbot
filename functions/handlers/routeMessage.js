@@ -145,19 +145,25 @@ module.exports = async function routeMessage({ event, client }) {
     }
 
     // ✅ 強制リセット（初期化）
-    if (userText === "こんにちは" || userText === "初期化") {
+    if (userText === "こんにちは" || userText === "初期化" || userText === "登録情報の修正") {
       const resetSession = {
         step: "awaiting_name",
         postSetup: false
       };
 
       await admin.firestore().collection("sessions").doc(userId).set(resetSession, { merge: true });
-      return await handleInitSetup({ event, client, session: resetSession });
+      if(userText === "登録情報の修正") {
+        return await handleInitSetup({ event, client, session: resetSession }, 2);
+      } else {
+        return await handleInitSetup({ event, client, session: resetSession });
+      }
     }
 
     // ✅ 「質問する」はここで処理
-    if (userText === "質問する") {
-      return await handleQuestion({ event, client, session });
+    if(userText === "質問する") {
+      return await handleQuestion({ event, client, session }, 1);
+    } else if(userText === "質問を終わる") {
+      return await handleQuestion({ event, client, session }, 2);
     }
 
     // ✅ 「今やる」はどのステップでも機能させる
@@ -186,7 +192,7 @@ module.exports = async function routeMessage({ event, client }) {
     }
 
     // ✅ 初期設定（名前・誕生日）がまだなら
-    if (!session?.postSetup) {
+    if (!session?.postSetup && !session?.resetPostSetup) {
       return await handleInitSetup({ event, client, session });
     }
 

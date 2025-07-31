@@ -28,7 +28,7 @@ module.exports = async function handleCorrection({ event, client, session }, aud
     beforeSentence = "sentence3"
   }
   const fullSentence = segments[beforeSentence].join('');
-  const { isCorrect, feedback, errorCounts } = await checkEnglishGrammar(userSentence, fullSentence);
+  const { isCorrect, feedback, errorCounts, correctSentence } = await checkEnglishGrammar(userSentence, fullSentence);
   
   // ✅ 発音チェック（音声入力の場合のみ）
   let pronunciationFeedback = null;
@@ -50,89 +50,38 @@ module.exports = async function handleCorrection({ event, client, session }, aud
     timestamp: admin.firestore.FieldValue.serverTimestamp()
   };
 
+  let nextPromptIndex = session.nextPromptIndex;
+  let topics = "";
+
+  // 30問完了後の自動生成フェーズ
+  if (nextPromptIndex > 30) {
+    const category = await analyzeUserTopics(userId);
+    const generatedTopics = await generateTopicsByCategory(category);
+    await saveCustomTopics(userId, generatedTopics[0], category);
+
+    topics = generatedTopics[0];
+  }
+
+  // アトミックなスコア保存とセッション更新
+  await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
+    ...session,
+    currentStep: null,
+    topics: topics,
+    questionFlag: true
+  });
+
+  const messages = [];
   if (isCorrect) {
-    const messages = [];
-    if(segmentStep === "done"){
-      // 正解だった場合
-      let nextPromptIndex = session.nextPromptIndex;
-      let topics = "";
-
-      // 30問完了後の自動生成フェーズ
-      if (nextPromptIndex > 30) {
-        const category = await analyzeUserTopics(userId);
-        const generatedTopics = await generateTopicsByCategory(category);
-        await saveCustomTopics(userId, generatedTopics[0], category);
-
-        topics = generatedTopics[0];
-      }
-
-      // アトミックなスコア保存とセッション更新
-      await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
-        ...session,
-        currentStep: null,
-        topics: topics,
-      });
-      const successMessages = createSuccessMessage(pronunciationFeedback);
-      messages.push(...successMessages);
-      messages.push({
-        type: "text",
-        text: "次のお題はいつやりますか？",
-        quickReply: {
-          items: [
-            {
-              type: "action",
-              action: { type: "message", label: "今やる", text: "今やる" }
-            },
-            {
-              type: "action",
-              action: { type: "message", label: "あとでやる", text: "あとでやる" }
-            }
-          ]
-        }
-      });
-    }else if(segmentStep === "continue"){
-      const segmentIndex = session.currentSegmentIndex || 0;
-      const sentenceIndex = session.currentSentence || "sentence1";
-      const segments = session.translationSegments || [];
-      const currentSegment = segments[sentenceIndex][segmentIndex];
-      // アトミックなスコア保存とセッション更新
-      await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
-        ...session,
-        currentStep: "awaitingTranslationWords"
-      });
-      const successMessages = createSuccessMessage(pronunciationFeedback);
-      messages.push(...successMessages);
-      messages.push({
-        type: "text",
-        text: [
-          "次の文を英訳していきましょう",
-          `「${currentSegment}」を英語にすると？`
-        ].join("\n"),
-        quickReply: {
-          items: [
-            {
-              type: "action",
-              action: { type: "message", label: "わからない", text: "わからない" }
-            }
-          ]
-        }
-      });
-    }
-
-    await client.replyMessage(event.replyToken, messages);
+    const successMessages = createSuccessMessage(pronunciationFeedback);
+    messages.push(...successMessages);
   } else {
-    // アトミックなスコア保存とセッション更新
-    await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
-      ...session,
-      currentStep: "done",
-      finalEnglish: userSentence,
-      englishFeedback: feedback
-    });
-
     let correctionText = [
       "まだ修正点があります。",
       "【文法フィードバック】",
-      feedback
+      feedback,
+      "【正しい英文】",
+      "以下に正しい英文を示します。",
+      correctSentence
     ];
     
     if (pronunciationFeedback) {
@@ -145,13 +94,55 @@ module.exports = async function handleCorrection({ event, client, session }, aud
         correctionText.push(pronunciationFeedback.tips);
       }
     }
-    
-    correctionText.push("");
-    correctionText.push("もう一度トライしてみてください。");
-
-    await client.replyMessage(event.replyToken, {
+    messages.push({
       type: "text",
       text: correctionText.join("\n")
     });
   }
+
+  if(segmentStep === "done"){
+    messages.push({
+      type: "text",
+      text: "次のお題はいつやりますか？",
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "今やる", text: "今やる" }
+          },
+          {
+            type: "action",
+            action: { type: "message", label: "あとでやる", text: "あとでやる" }
+          }
+        ]
+      }
+    });
+  }else if(segmentStep === "continue"){
+    const segmentIndex = session.currentSegmentIndex || 0;
+    const sentenceIndex = session.currentSentence || "sentence1";
+    const segments = session.translationSegments || [];
+    const currentSegment = segments[sentenceIndex][segmentIndex];
+    // アトミックなスコア保存とセッション更新
+    await saveScoreAndUpdateSession(userId, scoreData, yyyyMMdd, {
+      ...session,
+      currentStep: "awaitingTranslationWords"
+    });
+    messages.push({
+      type: "text",
+      text: [
+        "次の文を英訳していきましょう",
+        `「${currentSegment}」を英語にすると？`
+      ].join("\n"),
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "わからない", text: "わからない" }
+          }
+        ]
+      }
+    });
+  }
+  await client.replyMessage(event.replyToken, messages);
+
 };

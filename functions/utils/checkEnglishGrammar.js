@@ -14,6 +14,7 @@ module.exports = async function checkEnglishGrammar(english, japaneseSentence) {
     "{",
     '  "isCorrect": true/false,',
     '  "feedback": "日本語でのフィードバック（問題がない場合は空文字）",',
+    '  "correctSentence": "正しい英文",',
     '  "errorCounts": {',
     '    "subjectMissing": 主語抜けの回数,',
     '    "tenseErrors": 時制ミスの回数,',
@@ -43,6 +44,7 @@ module.exports = async function checkEnglishGrammar(english, japaneseSentence) {
     // 必要なプロパティが存在することを確認
     if (typeof result.isCorrect === 'boolean' && 
         typeof result.feedback === 'string' &&
+        typeof result.correctSentence === 'string' &&
         result.errorCounts &&
         typeof result.errorCounts.subjectMissing === 'number' &&
         typeof result.errorCounts.tenseErrors === 'number' &&

@@ -60,6 +60,14 @@ JSON形式以外では返答しないでください。
     return await client.replyMessage(event.replyToken, {
       type: "text",
       text: result.answer,
+      quickReply: {
+        items: [
+          {
+            type: "action",
+            action: { type: "message", label: "質問を終わる", text: "質問を終わる" }
+          }
+        ]
+      }
     });
 
   } catch (error) {
