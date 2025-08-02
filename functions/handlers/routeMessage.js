@@ -146,15 +146,19 @@ module.exports = async function routeMessage({ event, client }) {
 
     // ✅ 強制リセット（初期化）
     if (userText === "こんにちは" || userText === "初期化" || userText === "登録情報の修正") {
-      const resetSession = {
-        step: "awaiting_name",
-        postSetup: false
-      };
-
-      await admin.firestore().collection("sessions").doc(userId).set(resetSession, { merge: true });
       if(userText === "登録情報の修正") {
+        const resetSession = {
+          step: "awaiting_name",
+          postSetup: true,
+        };
+        await admin.firestore().collection("sessions").doc(userId).set(resetSession, { merge: true });
         return await handleInitSetup({ event, client, session: resetSession }, 2);
       } else {
+        const resetSession = {
+          step: "awaiting_name",
+          postSetup: false
+        };
+        await admin.firestore().collection("sessions").doc(userId).set(resetSession, { merge: true });
         return await handleInitSetup({ event, client, session: resetSession });
       }
     }
@@ -192,7 +196,7 @@ module.exports = async function routeMessage({ event, client }) {
     }
 
     // ✅ 初期設定（名前・誕生日）がまだなら
-    if (!session?.postSetup && !session?.resetPostSetup) {
+    if (!session?.postSetup || !session?.resetPostSetup) {
       return await handleInitSetup({ event, client, session });
     }
 

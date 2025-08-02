@@ -33,6 +33,7 @@ async function checkWordTranslation(japaneseWord, userTranslation, fullSentence)
     "1. 単語が正しい：◎の記号を付けて「正しい単語です」と表示",
     "2. 単語が意味的に不適切：✖の記号を付けて、正しい表現と理由を説明",
     "3. 単語が微妙（文脈次第）：△の記号を付けて、適切な文脈を説明",
+    "4. 単語を使って例文を1つ作ってください",
     "以下はフィードバックの例です。",
     "",
     "Q：「食べ物」を英語にすると?。",
@@ -41,10 +42,10 @@ async function checkWordTranslation(japaneseWord, userTranslation, fullSentence)
     "✖「food」はやや不自然な表現です。食事を意味する場合、\"lunch\"や\"dinner\"のように、時間帯に応じた語を使うと自然です😊",
     "Q：「飲んでいます」を英語にすると？",
     "ユーザー：drinking",
-    "Bot：◎「drinking」は正しい単語です！現在進行形の一部として使われます。文として使うなら「I am drinking」のようになりますね。",
+    "Bot：◎「drinking」は正しい単語です！",
     "Q：「思っています」を英語にすると？",
     "ユーザー：Think",
-    "Bot：◎「think」は意味として正しい動詞です！文として使うなら「I think」や「I’m thinking」のようになります。",
+    "Bot：◎「think」は意味として正しい動詞です！",
     "",
     "JSON形式以外では回答しないでください。"
   ].join("\n");

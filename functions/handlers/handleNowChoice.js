@@ -12,10 +12,18 @@ module.exports = async function handleNowChoice({ event, client, session }) {
   const yyyyMMdd = today.toISOString().slice(0, 10).replace(/-/g, "");
   try {
     const lastGeneratedDate = session.lastGeneratedDate;
-    if(lastGeneratedDate === yyyyMMdd) {
+    if(lastGeneratedDate == yyyyMMdd) {
       return await client.replyMessage(event.replyToken, {
         type: "text",
-        text: "今日はすでにお題をやりました。また明日挑戦してください！"
+        text: "今日はすでにお題をやりました。また明日挑戦してください！",
+        quickReply: {
+          items: [
+            {
+              type: "action",
+              action: { type: "message", label: "あとでやる", text: "あとでやる" }
+            }
+          ]
+        }
       });
     }
     const result = await getNextPrompt(userId);

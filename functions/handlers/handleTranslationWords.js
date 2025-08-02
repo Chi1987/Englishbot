@@ -41,7 +41,7 @@ module.exports = async function handleTranslationWords({ event, client, session 
       // 不正解の場合、正解を含めたフィードバック
       feedback = [
         result.feedback,
-        explanation
+        //explanation
       ].join("\n");
     }
   }
