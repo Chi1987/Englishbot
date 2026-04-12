@@ -8,13 +8,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
     import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
-    // === Firebase設定 ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyBv0cT0PwRSGmY_osfsIJnxLcmm2A9jP_4",
-      authDomain: "englishbot-demo.firebaseapp.com",
-      projectId: "englishbot-demo",
-    };
-
     // === 初期化 ===
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
