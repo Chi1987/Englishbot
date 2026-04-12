@@ -1,0 +1,70 @@
+<!-- <!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>学習履歴 - EnglishBot</title>
+  <script type="module">
+    // Firebase SDK読み込み
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getFirestore, collection, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    // === Firebase設定 ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyBv0cT0PwRSGmY_osfsIJnxLcmm2A9jP_4",
+      authDomain: "englishbot-demo.firebaseapp.com",
+      projectId: "englishbot-demo",
+    };
+
+    // === 初期化 ===
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    async function loadHistory() {
+      const messagesTable = document.getElementById("messages");
+      const quizTable = document.getElementById("quiz");
+
+      // === messages ===
+      const msgQuery = query(collection(db, "messages"), orderBy("timestamp", "desc"), limit(20));
+      const msgSnap = await getDocs(msgQuery);
+      msgSnap.forEach((doc) => {
+        const data = doc.data();
+        const row = `<tr><td>${data.timestamp?.toDate?.().toLocaleString?.() || ""}</td><td>${data.message}</td><td>${data.reply?.slice(0, 100) || ""}</td></tr>`;
+        messagesTable.insertAdjacentHTML("beforeend", row);
+      });
+
+      // === quiz_results ===
+      const quizQuery = query(collection(db, "quiz_results"), orderBy("timestamp", "desc"), limit(20));
+      const quizSnap = await getDocs(quizQuery);
+      quizSnap.forEach((doc) => {
+        const data = doc.data();
+        const row = `<tr><td>${data.timestamp?.toDate?.().toLocaleString?.() || ""}</td><td>${data.question}</td><td>${data.answer}</td><td>${data.isCorrect ? "⭕" : "❌"}</td></tr>`;
+        quizTable.insertAdjacentHTML("beforeend", row);
+      });
+    }
+
+    loadHistory();
+  </script>
+  <style>
+    body { font-family: "Yu Gothic", sans-serif; background: #fafafa; color: #333; padding: 20px; }
+    h1 { color: #0066cc; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+    th, td { border: 1px solid #ccc; padding: 8px; font-size: 14px; }
+    th { background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>📘 EnglishBot 学習履歴</h1>
+
+  <h2>最近のメッセージ</h2>
+  <table>
+    <tr><th>日時</th><th>入力</th><th>ChatGPTの応答</th></tr>
+    <tbody id="messages"></tbody>
+  </table>
+
+  <h2>クイズ結果</h2>
+  <table>
+    <tr><th>日時</th><th>問題</th><th>回答</th><th>正誤</th></tr>
+    <tbody id="quiz"></tbody>
+  </table>
+</body>
+</html> -->

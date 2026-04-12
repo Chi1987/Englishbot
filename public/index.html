@@ -1,13 +1,45 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>英語テンプレート100を購入する</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Butterfly Effect 決済ページへ移動中</title>
 </head>
-<body>
-  <h1>英語テンプレート100を購入する</h1>
-  <form action="/create-checkout-session" method="POST">
-    <button type="submit">購入ページへ進む</button>
-  </form>
+<body  class="bg-white min-h-screen flex flex-col items-center">
+  <div id="status">
+    <p id="msg">お支払いページへ移動しています...</p>
+  </div>
+  <script>
+    
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const msgTag = document.getElementById("msg");
+
+      if (!token) {
+        msgTag.innerText = "エラー: 不正なアクセスです。LINEから再度アクセスしてください。";
+        return;
+      }
+
+      try {
+        const res = await fetch("https://asia-northeast1-stripe-payment-server-10493.cloudfunctions.net/createCheckoutSession", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+        if (data.url) {
+          location.href = data.url;
+        } else {
+          msgTag.innerText = "エラー: 期限切れか無効なリンクです。";
+        }
+      } catch (e) {
+        msgTag.innerText = "エラーが発生しました。";
+      }
+    })();/***/
+  </script>
 </body>
 </html>
+
+<!-- create-checkout-session" method="POST">-->

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Butterfly Effect</title>
+</head>
+<body  class="bg-white min-h-screen flex flex-col items-center">
+  <p id="msg">管理画面へ移動しています...</p>
+  <script>
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+      const msgTag = document.getElementById("msg");
+
+      try {
+        const res = await fetch("https://asia-northeast1-stripe-payment-server-10493.cloudfunctions.net/createPortalSession", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token })
+        });
+        const data = await res.json();
+        if (data.url) location.href = data.url;
+        else msgTag.innerText = "エラー: 期限切れか無効なリンクです。";
+      } catch (e) {
+        msgTag.innerText = "エラーが発生しました。";
+      }
+    })();
+  </script>
+</body>
+</html>
